@@ -1,5 +1,8 @@
 import type { Job, JobInput } from './types'
 
+const API_BASE = (import.meta.env.VITE_API_BASE ?? '/api').replace(/\/$/, '')
+const apiPath = (path: string) => `${API_BASE}${path}`
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(path, {
     ...init,
@@ -18,26 +21,26 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return response.json() as Promise<T>
 }
 
-export const getJobs = () => request<Job[]>('/api/jobs')
+export const getJobs = () => request<Job[]>(apiPath('/jobs'))
 
 export const createJob = (job: JobInput) =>
-  request<Job>('/api/jobs', { method: 'POST', body: JSON.stringify(job) })
+  request<Job>(apiPath('/jobs'), { method: 'POST', body: JSON.stringify(job) })
 
 export const updateJob = (id: string, job: JobInput) =>
-  request<Job>(`/api/jobs/${id}`, { method: 'PUT', body: JSON.stringify(job) })
+  request<Job>(apiPath(`/jobs/${id}`), { method: 'PUT', body: JSON.stringify(job) })
 
-export const deleteJob = (id: string) => request<void>(`/api/jobs/${id}`, { method: 'DELETE' })
+export const deleteJob = (id: string) => request<void>(apiPath(`/jobs/${id}`), { method: 'DELETE' })
 
 export const importJobs = (jobs: JobInput[]) =>
-  request<{ imported: number }>('/api/import/json', { method: 'POST', body: JSON.stringify(jobs) })
+  request<{ imported: number }>(apiPath('/import/json'), { method: 'POST', body: JSON.stringify(jobs) })
 
 export const importCsv = (csv: string) =>
-  request<{ imported: number }>('/api/import/csv', {
+  request<{ imported: number }>(apiPath('/import/csv'), {
     method: 'POST',
     body: csv,
     headers: { 'Content-Type': 'text/csv; charset=utf-8' },
   })
 
 export function downloadExport(format: 'json' | 'csv') {
-  window.location.assign(`/api/export?format=${format}`)
+  window.location.assign(`${apiPath('/export')}?format=${format}`)
 }

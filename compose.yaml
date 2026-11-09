@@ -1,0 +1,32 @@
+services:
+  upwork-tracker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: upwork-tracker:local
+    container_name: upwork-tracker
+    restart: unless-stopped
+    init: true
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    ports:
+      - "127.0.0.1:${UPWORK_HOST_PORT:-8767}:8000"
+    environment:
+      UPWORK_DB_PATH: /app/backend/data/upwork.db
+    volumes:
+      - ./backend/data:/app/backend/data
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=3).read()"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
