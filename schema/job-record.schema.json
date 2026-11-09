@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.upwork-desk/schema/job-record.schema.json",
+  "title": "Upwork Desk job record",
+  "description": "One locally tracked Upwork opportunity. JSON export is an array of these records.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "title",
+    "description",
+    "payment_type",
+    "pay_min",
+    "pay_max",
+    "currency",
+    "proposals_count",
+    "interviewing_count",
+    "posted_at",
+    "posted_label",
+    "interest",
+    "application_status",
+    "source_url",
+    "notes",
+    "created_at",
+    "updated_at"
+  ],
+  "properties": {
+    "id": { "type": "string", "format": "uuid" },
+    "title": { "type": "string", "minLength": 1, "maxLength": 240 },
+    "description": { "type": "string" },
+    "payment_type": { "type": "string", "enum": ["hourly", "fixed"] },
+    "pay_min": { "type": ["number", "null"], "minimum": 0 },
+    "pay_max": { "type": ["number", "null"], "minimum": 0 },
+    "currency": { "type": "string", "pattern": "^[A-Z]{3}$" },
+    "proposals_count": { "type": ["integer", "null"], "minimum": 0 },
+    "interviewing_count": { "type": ["integer", "null"], "minimum": 0 },
+    "posted_at": { "type": ["string", "null"], "format": "date-time" },
+    "posted_label": { "type": ["string", "null"] },
+    "interest": { "type": ["integer", "null"], "minimum": 1, "maximum": 5 },
+    "application_status": {
+      "type": "string",
+      "enum": ["saved", "preparing", "applied", "replied", "interviewing", "hired", "rejected", "withdrawn", "archived"]
+    },
+    "source_url": { "type": ["string", "null"], "format": "uri" },
+    "notes": { "type": "string" },
+    "created_at": { "type": "string", "format": "date-time" },
+    "updated_at": { "type": "string", "format": "date-time" }
+  }
+}
