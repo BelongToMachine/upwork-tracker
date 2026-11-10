@@ -27,6 +27,7 @@ export interface Job {
   application_status: ApplicationStatus
   source_url: string | null
   notes: string
+  last_updated_by: string
   created_at: string
   updated_at: string
 }

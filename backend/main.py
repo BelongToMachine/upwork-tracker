@@ -52,6 +52,7 @@ class JobInput(BaseModel):
     application_status: ApplicationStatus = "saved"
     source_url: str | None = None
     notes: str = ""
+    last_updated_by: str = Field(default="", max_length=120)
 
     @field_validator("currency", mode="before")
     @classmethod
@@ -64,6 +65,11 @@ class JobInput(BaseModel):
         if isinstance(value, str):
             return value.strip() or None
         return value
+
+    @field_validator("last_updated_by", mode="before")
+    @classmethod
+    def normalize_last_updated_by(cls, value: object) -> object:
+        return value.strip() if isinstance(value, str) else value
 
     @model_validator(mode="after")
     def validate_pay_range(self) -> "JobInput":
@@ -115,11 +121,15 @@ def initialize_db() -> None:
                 application_status TEXT NOT NULL DEFAULT 'saved',
                 source_url TEXT,
                 notes TEXT NOT NULL DEFAULT '',
+                last_updated_by TEXT NOT NULL DEFAULT '',
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL
             )
             """
         )
+        columns = {row["name"] for row in db.execute("PRAGMA table_info(jobs)").fetchall()}
+        if "last_updated_by" not in columns:
+            db.execute("ALTER TABLE jobs ADD COLUMN last_updated_by TEXT NOT NULL DEFAULT ''")
         db.execute("CREATE INDEX IF NOT EXISTS idx_jobs_status ON jobs(application_status)")
         db.execute("CREATE INDEX IF NOT EXISTS idx_jobs_posted_at ON jobs(posted_at)")
 
@@ -137,11 +147,11 @@ def insert_job(db: sqlite3.Connection, job: JobInput, job_id: str | None = None)
         INSERT INTO jobs (
             id, title, description, payment_type, pay_min, pay_max, currency,
             proposals_count, interviewing_count, posted_at, posted_label, interest,
-            application_status, source_url, notes, created_at, updated_at
+            application_status, source_url, notes, last_updated_by, created_at, updated_at
         ) VALUES (
             :id, :title, :description, :payment_type, :pay_min, :pay_max, :currency,
             :proposals_count, :interviewing_count, :posted_at, :posted_label, :interest,
-            :application_status, :source_url, :notes, :created_at, :updated_at
+            :application_status, :source_url, :notes, :last_updated_by, :created_at, :updated_at
         )
         """,
         record,
@@ -195,7 +205,7 @@ def update_job(job_id: str, job: JobInput) -> dict[str, object]:
                 proposals_count=:proposals_count, interviewing_count=:interviewing_count,
                 posted_at=:posted_at, posted_label=:posted_label, interest=:interest,
                 application_status=:application_status, source_url=:source_url,
-                notes=:notes, updated_at=:updated_at
+                notes=:notes, last_updated_by=:last_updated_by, updated_at=:updated_at
             WHERE id=:id
             """,
             record,

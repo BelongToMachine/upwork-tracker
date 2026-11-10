@@ -1,6 +1,6 @@
 # Upwork Desk
 
-A private, table-first tracker for Upwork opportunities. Keep job details, budgets, proposal counts, employer interviews, your interest rating, and application status in one place. Records are stored in SQLite.
+A private, table-first tracker for Upwork opportunities. Keep job details, budgets, proposal counts, employer interviews, your interest rating, application status, and the name or initials of the last editor in one place. Records are stored in SQLite.
 
 ## Run locally
 

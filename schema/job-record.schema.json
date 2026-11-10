@@ -21,6 +21,7 @@
     "application_status",
     "source_url",
     "notes",
+    "last_updated_by",
     "created_at",
     "updated_at"
   ],
@@ -43,6 +44,11 @@
     },
     "source_url": { "type": ["string", "null"], "format": "uri" },
     "notes": { "type": "string" },
+    "last_updated_by": {
+      "type": "string",
+      "maxLength": 120,
+      "description": "Manually entered editor name or initials."
+    },
     "created_at": { "type": "string", "format": "date-time" },
     "updated_at": { "type": "string", "format": "date-time" }
   }

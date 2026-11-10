@@ -44,6 +44,7 @@ const blankJob: JobInput = {
   application_status: 'saved',
   source_url: null,
   notes: '',
+  last_updated_by: '',
 }
 
 const sectionLabels: Record<Section, string> = {
@@ -131,6 +132,20 @@ function App() {
     const timer = window.setTimeout(() => setNotice(''), 3200)
     return () => window.clearTimeout(timer)
   }, [notice])
+
+  useEffect(() => {
+    if (!drawerMode) return
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') closeDrawer()
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.body.style.overflow = previousOverflow
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [drawerMode])
 
   const activeCount = jobs.filter((job) => job.application_status !== 'archived').length
   const priorityCount = jobs.filter((job) => (job.interest ?? 0) >= 4 && job.application_status !== 'archived').length
@@ -438,21 +453,25 @@ function App() {
 
       {drawerMode && <>
         <button className="drawer-backdrop" aria-label="Close details" onClick={closeDrawer} />
-        <aside className="detail-drawer" aria-label={drawerMode === 'details' ? 'Job details' : 'Edit job'}>
-          <div className="drawer-topline"><span>{drawerMode === 'create' ? 'Add job' : drawerMode === 'edit' ? 'Edit job' : 'Job details'}</span><button className="icon-button" onClick={closeDrawer} aria-label="Close panel"><X size={18} /></button></div>
-          {drawerMode === 'details' && drawerJob ? <div className="detail-content">
+        {drawerMode === 'details' && drawerJob ? <section className="detail-modal" role="dialog" aria-modal="true" aria-labelledby="job-detail-title">
+          <div className="drawer-topline"><span>Job details</span><button className="icon-button" autoFocus onClick={closeDrawer} aria-label="Close details"><X size={18} /></button></div>
+          <div className="detail-content">
             <div className="detail-kicker">{drawerJob.payment_type === 'hourly' ? 'Hourly contract' : 'Fixed-price contract'}</div>
-            <h2>{drawerJob.title}</h2>
+            <h2 id="job-detail-title">{drawerJob.title}</h2>
             <div className="detail-budget">{formatPay(drawerJob)}</div>
             <div className="detail-meta-row"><span><FileText size={14} /> {drawerJob.proposals_count ?? '—'} proposals</span><span><Clock3 size={14} /> {drawerJob.interviewing_count ?? '—'} in interviews</span></div>
             <div className="detail-section"><div className="detail-label">Description</div><p className="detail-description">{drawerJob.description || 'No description provided.'}</p></div>
             <div className="detail-section"><div className="detail-label">My notes</div><p className="detail-notes">{drawerJob.notes || 'No notes yet.'}</p></div>
             <div className="detail-section detail-status-section"><div className="detail-label">Application status</div><span className={`status-wrap status-${drawerJob.application_status}`}><select aria-label="Application status" value={drawerJob.application_status} onChange={(event) => { const status = event.target.value as ApplicationStatus; void quickUpdate(drawerJob, { application_status: status }); setDrawerJob({ ...drawerJob, application_status: status }) }}>{statusOrder.map((status) => <option value={status} key={status}>{statusLabels[status]}</option>)}</select><ChevronDown size={12} /></span></div>
+            <div className="detail-updated-row"><span>Last updated by <strong>{drawerJob.last_updated_by || 'Not set'}</strong></span><time dateTime={drawerJob.updated_at}>{new Date(drawerJob.updated_at).toLocaleString()}</time></div>
             {drawerJob.source_url && <a className="source-link" href={drawerJob.source_url} target="_blank" rel="noreferrer">Open original Upwork job <ArrowUpRight size={15} /></a>}
             <div className="drawer-actions"><button className="button button-primary" onClick={() => openEdit(drawerJob)}>Edit job</button><button className="button button-outline" onClick={() => setConfirmDelete(true)}><Trash2 size={15} /> Delete</button></div>
             {confirmDelete && <div className="delete-confirm"><div><strong>Delete this job?</strong><p>This job cannot be restored from the list after deletion.</p></div><div><button className="text-button" onClick={() => setConfirmDelete(false)}>Cancel</button><button className="button button-danger" disabled={busy} onClick={() => void removeJob()}>Confirm delete</button></div></div>}
-          </div> : <JobForm key={`${drawerMode}-${drawerJob?.id ?? 'new'}`} initial={drawerJob ? toInput(drawerJob) : blankJob} mode={drawerMode} busy={busy} onCancel={closeDrawer} onSubmit={saveJob} />}
-        </aside>
+          </div>
+        </section> : <aside className="detail-drawer" role="dialog" aria-modal="true" aria-label={drawerMode === 'edit' ? 'Edit job' : 'Add job'}>
+          <div className="drawer-topline"><span>{drawerMode === 'create' ? 'Add job' : 'Edit job'}</span><button className="icon-button" onClick={closeDrawer} aria-label="Close panel"><X size={18} /></button></div>
+          <JobForm key={`${drawerMode}-${drawerJob?.id ?? 'new'}`} initial={drawerJob ? toInput(drawerJob) : blankJob} mode={drawerMode} busy={busy} onCancel={closeDrawer} onSubmit={saveJob} />
+        </aside>}
       </>}
 
       {notice && <div className="toast" role="status"><span className="toast-check"><Check size={14} /></span>{notice}<button onClick={() => setNotice('')} aria-label="Dismiss notification"><X size={14} /></button></div>}
@@ -509,6 +528,7 @@ function JobForm({ initial, mode, busy, onCancel, onSubmit }: JobFormProps) {
       <label className="form-field"><span>Original Upwork job URL</span><input type="url" value={form.source_url ?? ''} onChange={(event) => change('source_url', event.target.value || null)} placeholder="https://www.upwork.com/jobs/…" /></label>
     </div>
     <label className="form-field"><span>Personal notes</span><textarea rows={3} value={form.notes} onChange={(event) => change('notes', event.target.value)} placeholder="Fit notes, questions to confirm, or follow-up reminders…" /></label>
+    <label className="form-field"><span>Last updated by</span><input maxLength={120} value={form.last_updated_by} onChange={(event) => change('last_updated_by', event.target.value)} placeholder="Name or initials" /></label>
     {formError && <div className="form-error">{formError}</div>}
     <div className="form-footer"><button type="button" className="button button-quiet" onClick={onCancel}>Cancel</button><button type="submit" className="button button-primary" disabled={busy}>{busy ? 'Saving…' : mode === 'edit' ? 'Save changes' : 'Add job'}</button></div>
   </form>

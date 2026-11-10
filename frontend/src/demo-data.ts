@@ -16,6 +16,7 @@ export const demoJobs: JobInput[] = [
     application_status: 'preparing',
     source_url: 'https://www.upwork.com/jobs/~demo-analytics-dashboard',
     notes: 'Strong fit with recent dashboard work. Ask about design handoff and review cadence.',
+    last_updated_by: '',
   },
   {
     title: 'Ongoing product design support for a B2B SaaS team',
@@ -32,6 +33,7 @@ export const demoJobs: JobInput[] = [
     application_status: 'applied',
     source_url: 'https://www.upwork.com/jobs/~demo-product-design',
     notes: 'Applied with portfolio case study. Follow up in a few days.',
+    last_updated_by: '',
   },
   {
     title: 'Polish a Next.js marketing site and improve page speed',
@@ -48,6 +50,7 @@ export const demoJobs: JobInput[] = [
     application_status: 'saved',
     source_url: 'https://www.upwork.com/jobs/~demo-nextjs-site',
     notes: '',
+    last_updated_by: '',
   },
   {
     title: 'Create a small design system for an early-stage app',
@@ -64,6 +67,7 @@ export const demoJobs: JobInput[] = [
     application_status: 'replied',
     source_url: 'https://www.upwork.com/jobs/~demo-design-system',
     notes: 'Client replied; schedule a short intro call.',
+    last_updated_by: '',
   },
   {
     title: 'UX review of a personal finance mobile app',
@@ -80,5 +84,6 @@ export const demoJobs: JobInput[] = [
     application_status: 'archived',
     source_url: 'https://www.upwork.com/jobs/~demo-ux-review',
     notes: 'Scope seems broad for the budget.',
+    last_updated_by: '',
   },
 ]
