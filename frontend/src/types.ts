@@ -28,6 +28,9 @@ export interface Job {
   source_url: string | null
   notes: string
   last_updated_by: string
+  last_seen_by_employer: string | null
+  invites_sent: number | null
+  remarks: string
   created_at: string
   updated_at: string
 }

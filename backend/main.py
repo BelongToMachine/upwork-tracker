@@ -6,7 +6,7 @@ import json
 import os
 import sqlite3
 import uuid
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Literal
 
@@ -53,6 +53,9 @@ class JobInput(BaseModel):
     source_url: str | None = None
     notes: str = ""
     last_updated_by: str = Field(default="", max_length=120)
+    last_seen_by_employer: str | None = None
+    invites_sent: int | None = Field(default=None, ge=0)
+    remarks: str = ""
 
     @field_validator("currency", mode="before")
     @classmethod
@@ -70,6 +73,21 @@ class JobInput(BaseModel):
     @classmethod
     def normalize_last_updated_by(cls, value: object) -> object:
         return value.strip() if isinstance(value, str) else value
+
+    @field_validator("last_seen_by_employer", mode="before")
+    @classmethod
+    def validate_last_seen_by_employer(cls, value: object) -> object:
+        if isinstance(value, str):
+            value = value.strip()
+            if not value:
+                return None
+            try:
+                parsed = date.fromisoformat(value)
+            except ValueError as error:
+                raise ValueError("last_seen_by_employer must be an ISO date (YYYY-MM-DD)") from error
+            if parsed.isoformat() != value:
+                raise ValueError("last_seen_by_employer must be an ISO date (YYYY-MM-DD)")
+        return value
 
     @model_validator(mode="after")
     def validate_pay_range(self) -> "JobInput":
@@ -122,14 +140,24 @@ def initialize_db() -> None:
                 source_url TEXT,
                 notes TEXT NOT NULL DEFAULT '',
                 last_updated_by TEXT NOT NULL DEFAULT '',
+                last_seen_by_employer TEXT,
+                invites_sent INTEGER,
+                remarks TEXT NOT NULL DEFAULT '',
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL
             )
             """
         )
         columns = {row["name"] for row in db.execute("PRAGMA table_info(jobs)").fetchall()}
-        if "last_updated_by" not in columns:
-            db.execute("ALTER TABLE jobs ADD COLUMN last_updated_by TEXT NOT NULL DEFAULT ''")
+        new_columns = {
+            "last_updated_by": "TEXT NOT NULL DEFAULT ''",
+            "last_seen_by_employer": "TEXT",
+            "invites_sent": "INTEGER",
+            "remarks": "TEXT NOT NULL DEFAULT ''",
+        }
+        for column, definition in new_columns.items():
+            if column not in columns:
+                db.execute(f"ALTER TABLE jobs ADD COLUMN {column} {definition}")
         db.execute("CREATE INDEX IF NOT EXISTS idx_jobs_status ON jobs(application_status)")
         db.execute("CREATE INDEX IF NOT EXISTS idx_jobs_posted_at ON jobs(posted_at)")
 
@@ -147,11 +175,13 @@ def insert_job(db: sqlite3.Connection, job: JobInput, job_id: str | None = None)
         INSERT INTO jobs (
             id, title, description, payment_type, pay_min, pay_max, currency,
             proposals_count, interviewing_count, posted_at, posted_label, interest,
-            application_status, source_url, notes, last_updated_by, created_at, updated_at
+            application_status, source_url, notes, last_updated_by,
+            last_seen_by_employer, invites_sent, remarks, created_at, updated_at
         ) VALUES (
             :id, :title, :description, :payment_type, :pay_min, :pay_max, :currency,
             :proposals_count, :interviewing_count, :posted_at, :posted_label, :interest,
-            :application_status, :source_url, :notes, :last_updated_by, :created_at, :updated_at
+            :application_status, :source_url, :notes, :last_updated_by,
+            :last_seen_by_employer, :invites_sent, :remarks, :created_at, :updated_at
         )
         """,
         record,
@@ -192,10 +222,16 @@ def create_job(job: JobInput) -> dict[str, object]:
 @app.put("/api/jobs/{job_id}", response_model=JobRecord)
 def update_job(job_id: str, job: JobInput) -> dict[str, object]:
     with connect_db() as db:
-        existing = db.execute("SELECT created_at FROM jobs WHERE id = ?", (job_id,)).fetchone()
+        existing = db.execute(
+            "SELECT created_at, last_updated_by, last_seen_by_employer, invites_sent, remarks FROM jobs WHERE id = ?",
+            (job_id,),
+        ).fetchone()
         if existing is None:
             raise HTTPException(status_code=404, detail="Job not found")
         record = job.model_dump()
+        for field in ("last_updated_by", "last_seen_by_employer", "invites_sent", "remarks"):
+            if field not in job.model_fields_set:
+                record[field] = existing[field]
         record.update({"id": job_id, "created_at": existing["created_at"], "updated_at": now_iso()})
         db.execute(
             """
@@ -205,7 +241,9 @@ def update_job(job_id: str, job: JobInput) -> dict[str, object]:
                 proposals_count=:proposals_count, interviewing_count=:interviewing_count,
                 posted_at=:posted_at, posted_label=:posted_label, interest=:interest,
                 application_status=:application_status, source_url=:source_url,
-                notes=:notes, last_updated_by=:last_updated_by, updated_at=:updated_at
+                notes=:notes, last_updated_by=:last_updated_by,
+                last_seen_by_employer=:last_seen_by_employer, invites_sent=:invites_sent,
+                remarks=:remarks, updated_at=:updated_at
             WHERE id=:id
             """,
             record,
@@ -246,7 +284,7 @@ async def import_csv(request: Request) -> ImportResult:
                     row[field] = None
                 else:
                     row[field] = float(value)
-            for field in ("proposals_count", "interviewing_count", "interest"):
+            for field in ("proposals_count", "interviewing_count", "invites_sent", "interest"):
                 value = (row.get(field) or "").strip()
                 if value == "":
                     row[field] = None

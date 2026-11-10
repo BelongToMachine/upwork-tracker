@@ -22,6 +22,9 @@
     "source_url",
     "notes",
     "last_updated_by",
+    "last_seen_by_employer",
+    "invites_sent",
+    "remarks",
     "created_at",
     "updated_at"
   ],
@@ -49,6 +52,13 @@
       "maxLength": 120,
       "description": "Manually entered editor name or initials."
     },
+    "last_seen_by_employer": {
+      "type": ["string", "null"],
+      "format": "date",
+      "description": "Exact employer view date. Relative source text is converted using the date this tracker update is saved."
+    },
+    "invites_sent": { "type": ["integer", "null"], "minimum": 0 },
+    "remarks": { "type": "string" },
     "created_at": { "type": "string", "format": "date-time" },
     "updated_at": { "type": "string", "format": "date-time" }
   }

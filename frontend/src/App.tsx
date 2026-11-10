@@ -38,6 +38,8 @@ const blankJob: JobInput = {
   currency: 'USD',
   proposals_count: null,
   interviewing_count: null,
+  last_seen_by_employer: null,
+  invites_sent: null,
   posted_at: null,
   posted_label: null,
   interest: null,
@@ -45,6 +47,7 @@ const blankJob: JobInput = {
   source_url: null,
   notes: '',
   last_updated_by: '',
+  remarks: '',
 }
 
 const sectionLabels: Record<Section, string> = {
@@ -92,6 +95,41 @@ function formatPosted(job: Job) {
   const formatter = new Intl.RelativeTimeFormat('en', { numeric: 'auto' })
   const [unit, seconds] = units.find(([, size]) => Math.abs(diffSeconds) >= size) ?? ['minute', 60]
   return formatter.format(Math.round(diffSeconds / seconds), unit)
+}
+
+function formatDateOnly(date: Date) {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function normalizeLastSeenByEmployer(value: string | null) {
+  const text = value?.trim().toLocaleLowerCase()
+  if (!text) return null
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(text)) {
+    const [year, month, day] = text.split('-').map(Number)
+    const parsed = new Date(year, month - 1, day)
+    if (formatDateOnly(parsed) !== text) throw new Error('Enter a valid date in YYYY-MM-DD format.')
+    return text
+  }
+
+  let daysAgo: number | null = null
+  if (/\b(?:today|just now)\b/.test(text)) daysAgo = 0
+  else if (/\b(?:yesterday|last day|1 day ago|last 24 hours)\b/.test(text)) daysAgo = 1
+  else {
+    const match = text.match(/\b(\d+)\s+days?\s+ago\b/)
+    if (match) daysAgo = Number(match[1])
+  }
+
+  if (daysAgo == null || !Number.isFinite(daysAgo) || daysAgo > 36500) {
+    throw new Error('Use YYYY-MM-DD, “yesterday,” “last day,” or “N days ago.”')
+  }
+
+  const date = new Date()
+  date.setDate(date.getDate() - daysAgo)
+  return formatDateOnly(date)
 }
 
 function App() {
@@ -161,7 +199,7 @@ function App() {
       if (statusFilter !== 'all' && job.application_status !== statusFilter) return false
       if (interestFilter === 'high' && (job.interest ?? 0) < 4) return false
       if (interestFilter === 'unrated' && job.interest != null) return false
-      if (needle && !`${job.title} ${job.description} ${job.notes}`.toLocaleLowerCase().includes(needle)) return false
+      if (needle && !`${job.title} ${job.description} ${job.notes} ${job.remarks}`.toLocaleLowerCase().includes(needle)) return false
       return true
     })
 
@@ -347,7 +385,7 @@ function App() {
             <div className="toolbar">
               <label className="search-field">
                 <Search size={16} />
-                <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search jobs or notes…" aria-label="Search jobs" />
+                <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search jobs, notes, or remarks…" aria-label="Search jobs" />
                 {query && <button className="clear-search" onClick={() => setQuery('')} aria-label="Clear search"><X size={14} /></button>}
               </label>
               <label className="select-field filter-select">
@@ -398,6 +436,8 @@ function App() {
                     <th className="pay-col">Pay</th>
                     <th className="proposals-col">Proposals</th>
                     <th className="interviews-col">Interviewing</th>
+                    <th className="invites-col">Invites sent</th>
+                    <th className="last-seen-col">Last seen by employer</th>
                     <th className="posted-col">Posted</th>
                     <th className="interest-col">Interest</th>
                     <th className="status-col">Application status</th>
@@ -405,7 +445,7 @@ function App() {
                   </tr>
                 </thead>
                 <tbody>
-                  {loading ? <tr><td colSpan={8} className="table-message"><span className="loading-mark" /> Loading jobs…</td></tr> : visibleJobs.map((job) => (
+                  {loading ? <tr><td colSpan={10} className="table-message"><span className="loading-mark" /> Loading jobs…</td></tr> : visibleJobs.map((job) => (
                     <tr key={job.id}>
                       <td className="job-cell">
                         <button className="job-title" onClick={() => openDetails(job)}>{job.title}</button>
@@ -414,6 +454,8 @@ function App() {
                       <td className="pay-cell"><strong>{formatPay(job)}</strong><span>{job.payment_type === 'hourly' ? 'Hourly' : 'Fixed price'}</span></td>
                       <td className="metric-cell"><span className="metric-number">{job.proposals_count ?? '—'}</span><span className="metric-label">proposals</span></td>
                       <td className="metric-cell"><span className="interview-number">{job.interviewing_count ?? '—'}</span><span className="metric-label">in interviews</span></td>
+                      <td className="metric-cell"><span className="metric-number">{job.invites_sent ?? '—'}</span><span className="metric-label">invites sent</span></td>
+                      <td className="last-seen-cell">{job.last_seen_by_employer ?? '—'}</td>
                       <td className="posted-cell"><Clock3 size={14} /><span>{formatPosted(job)}</span></td>
                       <td className="rating-cell">
                         <div className="rating-buttons" role="group" aria-label={`${job.title} interest rating`}>
@@ -432,7 +474,7 @@ function App() {
                     </tr>
                   ))}
                   {!loading && visibleJobs.length === 0 && (
-                    <tr><td colSpan={8} className="table-empty">
+                    <tr><td colSpan={10} className="table-empty">
                       {jobs.length === 0 && section === 'all' ? <div className="empty-state">
                         <div className="empty-illustration"><FileText size={23} /><span><Plus size={13} /></span></div>
                         <h3>Start by saving jobs worth tracking.</h3>
@@ -459,11 +501,12 @@ function App() {
             <div className="detail-kicker">{drawerJob.payment_type === 'hourly' ? 'Hourly contract' : 'Fixed-price contract'}</div>
             <h2 id="job-detail-title">{drawerJob.title}</h2>
             <div className="detail-budget">{formatPay(drawerJob)}</div>
-            <div className="detail-meta-row"><span><FileText size={14} /> {drawerJob.proposals_count ?? '—'} proposals</span><span><Clock3 size={14} /> {drawerJob.interviewing_count ?? '—'} in interviews</span></div>
+            <div className="detail-meta-row"><span><FileText size={14} /> {drawerJob.proposals_count ?? '—'} proposals</span><span><Clock3 size={14} /> {drawerJob.interviewing_count ?? '—'} in interviews</span><span><Send size={14} /> {drawerJob.invites_sent ?? '—'} invites sent</span><span>Last seen by employer: {drawerJob.last_seen_by_employer ?? '—'}</span></div>
             <div className="detail-section"><div className="detail-label">Description</div><p className="detail-description">{drawerJob.description || 'No description provided.'}</p></div>
-            <div className="detail-section"><div className="detail-label">My notes</div><p className="detail-notes">{drawerJob.notes || 'No notes yet.'}</p></div>
+            <div className="detail-section"><div className="detail-label">Notes</div><p className="detail-notes">{drawerJob.notes || 'No notes yet.'}</p></div>
+            <div className="detail-section"><div className="detail-label">My remarks</div><p className="detail-notes">{drawerJob.remarks || 'No remarks yet.'}</p></div>
             <div className="detail-section detail-status-section"><div className="detail-label">Application status</div><span className={`status-wrap status-${drawerJob.application_status}`}><select aria-label="Application status" value={drawerJob.application_status} onChange={(event) => { const status = event.target.value as ApplicationStatus; void quickUpdate(drawerJob, { application_status: status }); setDrawerJob({ ...drawerJob, application_status: status }) }}>{statusOrder.map((status) => <option value={status} key={status}>{statusLabels[status]}</option>)}</select><ChevronDown size={12} /></span></div>
-            <div className="detail-updated-row"><span>Last updated by <strong>{drawerJob.last_updated_by || 'Not set'}</strong></span><time dateTime={drawerJob.updated_at}>{new Date(drawerJob.updated_at).toLocaleString()}</time></div>
+            <div className="detail-updated-row"><span>Activity snapshot · last updated by <strong>{drawerJob.last_updated_by || 'Not set'}</strong></span><time dateTime={drawerJob.updated_at}>{new Date(drawerJob.updated_at).toLocaleString()}</time></div>
             {drawerJob.source_url && <a className="source-link" href={drawerJob.source_url} target="_blank" rel="noreferrer">Open original Upwork job <ArrowUpRight size={15} /></a>}
             <div className="drawer-actions"><button className="button button-primary" onClick={() => openEdit(drawerJob)}>Edit job</button><button className="button button-outline" onClick={() => setConfirmDelete(true)}><Trash2 size={15} /> Delete</button></div>
             {confirmDelete && <div className="delete-confirm"><div><strong>Delete this job?</strong><p>This job cannot be restored from the list after deletion.</p></div><div><button className="text-button" onClick={() => setConfirmDelete(false)}>Cancel</button><button className="button button-danger" disabled={busy} onClick={() => void removeJob()}>Confirm delete</button></div></div>}
@@ -499,8 +542,15 @@ function JobForm({ initial, mode, busy, onCancel, onSubmit }: JobFormProps) {
       setFormError('Minimum pay cannot exceed maximum pay.')
       return
     }
+    let lastSeenByEmployer: string | null
+    try {
+      lastSeenByEmployer = normalizeLastSeenByEmployer(form.last_seen_by_employer)
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : 'Enter a valid last seen date.')
+      return
+    }
     const postedAt = form.posted_at ? new Date(form.posted_at).toISOString() : null
-    await onSubmit({ ...form, posted_at: postedAt, posted_label: null, currency: form.currency.trim().toUpperCase() || 'USD' })
+    await onSubmit({ ...form, last_seen_by_employer: lastSeenByEmployer, posted_at: postedAt, posted_label: null, currency: form.currency.trim().toUpperCase() || 'USD' })
   }
 
   const datetimeLocal = form.posted_at ? toLocalDateTimeInput(form.posted_at) : ''
@@ -528,7 +578,13 @@ function JobForm({ initial, mode, busy, onCancel, onSubmit }: JobFormProps) {
       <label className="form-field"><span>Original Upwork job URL</span><input type="url" value={form.source_url ?? ''} onChange={(event) => change('source_url', event.target.value || null)} placeholder="https://www.upwork.com/jobs/…" /></label>
     </div>
     <label className="form-field"><span>Personal notes</span><textarea rows={3} value={form.notes} onChange={(event) => change('notes', event.target.value)} placeholder="Fit notes, questions to confirm, or follow-up reminders…" /></label>
+    <div className="form-section-label">Employer activity · as of this update</div>
+    <div className="form-grid">
+      <label className="form-field"><span>Last seen by employer</span><input value={form.last_seen_by_employer ?? ''} onChange={(event) => change('last_seen_by_employer', event.target.value || null)} placeholder="YYYY-MM-DD or viewed last day" /><small className="form-help">Relative wording uses the date you save this update.</small></label>
+      <label className="form-field"><span>Invites sent</span><input type="number" min="0" value={form.invites_sent ?? ''} onChange={(event) => change('invites_sent', event.target.value === '' ? null : Number(event.target.value))} placeholder="Unknown" /></label>
+    </div>
     <label className="form-field"><span>Last updated by</span><input maxLength={120} value={form.last_updated_by} onChange={(event) => change('last_updated_by', event.target.value)} placeholder="Name or initials" /></label>
+    <label className="form-field"><span>My remarks</span><textarea rows={3} value={form.remarks} onChange={(event) => change('remarks', event.target.value)} placeholder="Add your own note about this opportunity…" /></label>
     {formError && <div className="form-error">{formError}</div>}
     <div className="form-footer"><button type="button" className="button button-quiet" onClick={onCancel}>Cancel</button><button type="submit" className="button button-primary" disabled={busy}>{busy ? 'Saving…' : mode === 'edit' ? 'Save changes' : 'Add job'}</button></div>
   </form>

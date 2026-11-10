@@ -87,18 +87,20 @@
 
 .table-frame { overflow: hidden; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); }
 .table-scroll { overflow-x: auto; }
-.jobs-table { width: 100%; min-width: 900px; border-collapse: collapse; table-layout: fixed; }
+.jobs-table { width: 100%; min-width: 1120px; border-collapse: collapse; table-layout: fixed; }
 .jobs-table th { height: 39px; padding: 0 12px; border-bottom: 1px solid var(--line); color: #96988f; background: #f8f7f1; text-align: left; font-size: 8px; font-weight: 700; letter-spacing: .11em; white-space: nowrap; }
 .jobs-table td { height: 82px; padding: 11px 12px; border-bottom: 1px solid #eeece4; vertical-align: middle; }
 .jobs-table tbody tr:last-child td { border-bottom: 0; }
 .jobs-table tbody tr:not(:has(.table-empty)):hover { background: #faf9f4; }
-.job-col { width: 30%; padding-left: 18px !important; }
-.pay-col { width: 13%; }
-.proposals-col { width: 8%; }
-.interviews-col { width: 9%; }
-.posted-col { width: 9%; }
-.interest-col { width: 12%; }
-.status-col { width: 13%; }
+.job-col { width: 26%; padding-left: 18px !important; }
+.pay-col { width: 12%; }
+.proposals-col { width: 7%; }
+.interviews-col { width: 8%; }
+.invites-col { width: 7%; }
+.last-seen-col { width: 12%; }
+.posted-col { width: 8%; }
+.interest-col { width: 10%; }
+.status-col { width: 10%; }
 .actions-col { width: 46px; }
 .job-cell { padding-left: 18px !important; }
 .job-title { display: block; max-width: 100%; overflow: hidden; padding: 0; border: 0; color: #3a4334; background: transparent; text-align: left; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; font-weight: 700; letter-spacing: -.015em; cursor: pointer; }
@@ -111,6 +113,7 @@
 .metric-number, .interview-number { display: block; color: #555b50; font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .interview-number { color: #7d725b; }
 .metric-label { display: block; margin-top: 3px; color: #a0a198; font-size: 9px; }
+.last-seen-cell { color: #70766b; white-space: nowrap; font-size: 10px; font-variant-numeric: tabular-nums; }
 .posted-cell { color: #797d73; white-space: nowrap; font-size: 10px; }
 .posted-cell svg { margin-right: 5px; color: #a1a397; vertical-align: -3px; }
 .rating-buttons { display: flex; align-items: center; gap: 1px; }
@@ -167,6 +170,7 @@
 .form-heading p { margin: 5px 0 0; color: #8c8f85; font-size: 11px; }
 .form-field { min-width: 0; display: flex; flex-direction: column; gap: 6px; }
 .form-field > span { color: #64695e; font-size: 10px; font-weight: 600; }
+.form-help { color: #8d9086; font-size: 9px; line-height: 1.45; }
 .form-field > span b { color: #b96b5a; }
 .form-field input, .form-field textarea, .form-field select { width: 100%; min-height: 36px; padding: 8px 10px; border: 1px solid #e2dfd5; border-radius: 6px; outline: 0; color: #41473d; background: #fffefa; font-size: 11px; }
 .form-field textarea { min-height: unset; resize: vertical; line-height: 1.55; }
@@ -181,7 +185,7 @@
 .detail-kicker { color: #92958a; font-size: 9px; font-weight: 700; letter-spacing: .14em; }
 .detail-content h2 { margin: 12px 0 10px; color: var(--ink-strong); font-family: var(--serif); font-size: 34px; font-weight: 500; letter-spacing: -.035em; line-height: 1.1; }
 .detail-budget { color: var(--olive-deep); font-size: 14px; font-weight: 700; }
-.detail-meta-row { display: flex; gap: 18px; margin-top: 17px; padding: 12px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); color: #7b7f75; font-size: 10px; }
+.detail-meta-row { display: flex; flex-wrap: wrap; gap: 10px 18px; margin-top: 17px; padding: 12px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); color: #7b7f75; font-size: 10px; }
 .detail-meta-row span { display: inline-flex; align-items: center; gap: 6px; }
 .detail-meta-row svg { color: #96998f; }
 .detail-section { margin-top: 24px; }
@@ -252,7 +256,7 @@
   .filter-select, .sort-select { flex: 1; justify-content: space-between; }
   .filter-select select, .sort-select select { width: auto; flex: 1; }
   .data-button { min-width: 67px; }
-  .jobs-table { min-width: 920px; }
+  .jobs-table { min-width: 1120px; }
   .jobs-table th, .jobs-table td { padding-right: 9px; padding-left: 9px; }
   .job-col { width: 34%; }
   .table-empty { position: sticky; left: 0; width: calc(100vw - 30px) !important; }
