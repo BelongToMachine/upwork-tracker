@@ -34,15 +34,15 @@ export interface Job {
 export type JobInput = Omit<Job, 'id' | 'created_at' | 'updated_at'>
 
 export const statusLabels: Record<ApplicationStatus, string> = {
-  saved: '待评估',
-  preparing: '准备投递',
-  applied: '已投递',
-  replied: '已回复',
-  interviewing: '面试中',
-  hired: '已录用',
-  rejected: '未通过',
-  withdrawn: '已撤回',
-  archived: '已归档',
+  saved: 'Saved',
+  preparing: 'Preparing',
+  applied: 'Applied',
+  replied: 'Replied',
+  interviewing: 'Interviewing',
+  hired: 'Hired',
+  rejected: 'Rejected',
+  withdrawn: 'Withdrawn',
+  archived: 'Archived',
 }
 
 export const statusOrder: ApplicationStatus[] = [

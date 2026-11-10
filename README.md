@@ -1,49 +1,49 @@
 # Upwork Desk
 
-一个本地优先的 Upwork 职位追踪器。用表格整理职位、预算、申请人数、雇主面试人数、个人意向和投递进度。所有数据保存在本机 SQLite 文件中。
+A private, table-first tracker for Upwork opportunities. Keep job details, budgets, proposal counts, employer interviews, your interest rating, and application status in one place. Records are stored in SQLite.
 
-## 日常使用
+## Run locally
 
-需要安装 Node.js 和 [uv](https://docs.astral.sh/uv/)，在项目目录运行：
+Requirements: Node.js, Python, and [uv](https://docs.astral.sh/uv/).
 
 ```sh
 ./start.sh
 ```
 
-首次启动会安装依赖并构建前端，之后启动本地服务。打开 <http://127.0.0.1:8765>。数据库位于 `backend/data/upwork.db`，并已加入 Git 忽略规则。
+The script installs dependencies, builds the frontend, and starts the local service. Open <http://127.0.0.1:8765>. The database is stored at `backend/data/upwork.db`, which is ignored by Git.
 
-## 开发模式
+## Development
 
-终端一启动 API：
+Start the API in one terminal:
 
 ```sh
 uv sync
 uv run uvicorn backend.main:app --host 127.0.0.1 --port 8765 --reload
 ```
 
-终端二启动前端：
+Start the frontend in another terminal:
 
 ```sh
 npm --prefix frontend ci
 npm --prefix frontend run dev
 ```
 
-打开 <http://127.0.0.1:5173>。Vite 会把 `/api` 请求转发到本机 API。
+Open <http://127.0.0.1:5173>. Vite forwards `/api` requests to the local API.
 
-## 容器部署
+## Container deployment
 
-Dockerfile 会在 Node 22 构建前端，并在 Python 3.14 运行 FastAPI。Compose 将容器端口映射到 NAS 的 `127.0.0.1:8767`，并把 SQLite 数据保存在 `backend/data`。通过 F1 Control Panel 接入时，用户入口为同一站点下的 `/upwork/`。
+The multi-stage Dockerfile builds the React app with Node 22 and runs FastAPI on Python 3.14. Compose publishes the app on `127.0.0.1:8767` and mounts `backend/data` for persistent SQLite storage. The production frontend is built for `/upwork/`; the F1 Control Panel provides that same-origin route.
 
-在 NAS 项目目录运行：
+On the F1 NAS, the `deck` account uses rootless Podman with the standard Compose file:
 
 ```sh
-docker compose up -d --build
+podman compose up -d --build
 ```
 
-当前 NAS 的 `deck` 用户没有 rootful Docker socket 权限；可使用管理员部署，或在接受 Podman 作为容器运行时时运行 `podman compose up -d --build`。不要将 8767 直接开放到局域网。
+Keep port 8767 bound to loopback and access the app through the F1 Control Panel. The database directory is never included in the image.
 
-## 数据与备份
+## Import, export, and backups
 
-可手动添加职位，或从“数据”菜单导入 JSON/CSV；也可导出 JSON/CSV 备份。JSON 字段定义见 [`schema/job-record.schema.json`](schema/job-record.schema.json)。雇主面试人数与个人投递状态分别记录。首次使用时可以选择载入示例职位，示例数据不会自动写入数据库。
+Add jobs manually, import JSON or CSV from the Data menu, and export either format as a backup. The record schema is documented in [`schema/job-record.schema.json`](schema/job-record.schema.json). Employer interview counts and your application status are stored separately.
 
-停止应用后，可复制 `backend/data/upwork.db` 进行完整备份。
+Sample jobs are optional and are only added when you choose **Load samples**. For a filesystem-level backup, stop the service first or use SQLite's backup API; do not copy a live database file directly.
