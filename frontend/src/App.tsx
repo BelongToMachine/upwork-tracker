@@ -38,6 +38,7 @@ const blankJob: JobInput = {
   currency: 'USD',
   proposals_count: null,
   interviewing_count: null,
+  hires_count: null,
   last_seen_by_employer: null,
   invites_sent: null,
   posted_at: null,
@@ -436,6 +437,7 @@ function App() {
                     <th className="pay-col">Pay</th>
                     <th className="proposals-col">Proposals</th>
                     <th className="interviews-col">Interviewing</th>
+                    <th className="hires-col">Hires</th>
                     <th className="invites-col">Invites sent</th>
                     <th className="last-seen-col">Last seen by employer</th>
                     <th className="posted-col">Posted</th>
@@ -445,7 +447,7 @@ function App() {
                   </tr>
                 </thead>
                 <tbody>
-                  {loading ? <tr><td colSpan={10} className="table-message"><span className="loading-mark" /> Loading jobs…</td></tr> : visibleJobs.map((job) => (
+                  {loading ? <tr><td colSpan={11} className="table-message"><span className="loading-mark" /> Loading jobs…</td></tr> : visibleJobs.map((job) => (
                     <tr key={job.id}>
                       <td className="job-cell">
                         <button className="job-title" onClick={() => openDetails(job)}>{job.title}</button>
@@ -454,6 +456,7 @@ function App() {
                       <td className="pay-cell"><strong>{formatPay(job)}</strong><span>{job.payment_type === 'hourly' ? 'Hourly' : 'Fixed price'}</span></td>
                       <td className="metric-cell"><span className="metric-number">{job.proposals_count ?? '—'}</span><span className="metric-label">proposals</span></td>
                       <td className="metric-cell"><span className="interview-number">{job.interviewing_count ?? '—'}</span><span className="metric-label">in interviews</span></td>
+                      <td className="metric-cell"><span className="metric-number">{job.hires_count ?? '—'}</span><span className="metric-label">hires</span></td>
                       <td className="metric-cell"><span className="metric-number">{job.invites_sent ?? '—'}</span><span className="metric-label">invites sent</span></td>
                       <td className="last-seen-cell">{job.last_seen_by_employer ?? '—'}</td>
                       <td className="posted-cell"><Clock3 size={14} /><span>{formatPosted(job)}</span></td>
@@ -474,7 +477,7 @@ function App() {
                     </tr>
                   ))}
                   {!loading && visibleJobs.length === 0 && (
-                    <tr><td colSpan={10} className="table-empty">
+                    <tr><td colSpan={11} className="table-empty">
                       {jobs.length === 0 && section === 'all' ? <div className="empty-state">
                         <div className="empty-illustration"><FileText size={23} /><span><Plus size={13} /></span></div>
                         <h3>Start by saving jobs worth tracking.</h3>
@@ -501,7 +504,7 @@ function App() {
             <div className="detail-kicker">{drawerJob.payment_type === 'hourly' ? 'Hourly contract' : 'Fixed-price contract'}</div>
             <h2 id="job-detail-title">{drawerJob.title}</h2>
             <div className="detail-budget">{formatPay(drawerJob)}</div>
-            <div className="detail-meta-row"><span><FileText size={14} /> {drawerJob.proposals_count ?? '—'} proposals</span><span><Clock3 size={14} /> {drawerJob.interviewing_count ?? '—'} in interviews</span><span><Send size={14} /> {drawerJob.invites_sent ?? '—'} invites sent</span><span>Last seen by employer: {drawerJob.last_seen_by_employer ?? '—'}</span></div>
+            <div className="detail-meta-row"><span><FileText size={14} /> {drawerJob.proposals_count ?? '—'} proposals</span><span><Clock3 size={14} /> {drawerJob.interviewing_count ?? '—'} in interviews</span><span>{drawerJob.hires_count ?? '—'} hires</span><span><Send size={14} /> {drawerJob.invites_sent ?? '—'} invites sent</span><span>Last seen by employer: {drawerJob.last_seen_by_employer ?? '—'}</span></div>
             <div className="detail-section"><div className="detail-label">Description</div><p className="detail-description">{drawerJob.description || 'No description provided.'}</p></div>
             <div className="detail-section"><div className="detail-label">Notes</div><p className="detail-notes">{drawerJob.notes || 'No notes yet.'}</p></div>
             <div className="detail-section"><div className="detail-label">My remarks</div><p className="detail-notes">{drawerJob.remarks || 'No remarks yet.'}</p></div>
@@ -567,6 +570,7 @@ function JobForm({ initial, mode, busy, onCancel, onSubmit }: JobFormProps) {
       <label className="form-field"><span>Maximum pay</span><input type="number" min="0" value={form.pay_max ?? ''} onChange={(event) => change('pay_max', event.target.value === '' ? null : Number(event.target.value))} placeholder="Not set" /></label>
       <label className="form-field"><span>Proposals</span><input type="number" min="0" value={form.proposals_count ?? ''} onChange={(event) => change('proposals_count', event.target.value === '' ? null : Number(event.target.value))} placeholder="Unknown" /></label>
       <label className="form-field"><span>Employer interviews</span><input type="number" min="0" value={form.interviewing_count ?? ''} onChange={(event) => change('interviewing_count', event.target.value === '' ? null : Number(event.target.value))} placeholder="Unknown" /></label>
+      <label className="form-field"><span>Hires</span><input type="number" min="0" value={form.hires_count ?? ''} onChange={(event) => change('hires_count', event.target.value === '' ? null : Number(event.target.value))} placeholder="Unknown" /></label>
     </div>
     <div className="form-section-label">Your assessment</div>
     <div className="form-grid">

@@ -87,20 +87,21 @@
 
 .table-frame { overflow: hidden; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); }
 .table-scroll { overflow-x: auto; }
-.jobs-table { width: 100%; min-width: 1120px; border-collapse: collapse; table-layout: fixed; }
+.jobs-table { width: 100%; min-width: 1240px; border-collapse: collapse; table-layout: fixed; }
 .jobs-table th { height: 39px; padding: 0 12px; border-bottom: 1px solid var(--line); color: #96988f; background: #f8f7f1; text-align: left; font-size: 8px; font-weight: 700; letter-spacing: .11em; white-space: nowrap; }
 .jobs-table td { height: 82px; padding: 11px 12px; border-bottom: 1px solid #eeece4; vertical-align: middle; }
 .jobs-table tbody tr:last-child td { border-bottom: 0; }
 .jobs-table tbody tr:not(:has(.table-empty)):hover { background: #faf9f4; }
-.job-col { width: 26%; padding-left: 18px !important; }
-.pay-col { width: 12%; }
+.job-col { width: 24%; padding-left: 18px !important; }
+.pay-col { width: 11%; }
 .proposals-col { width: 7%; }
-.interviews-col { width: 8%; }
-.invites-col { width: 7%; }
-.last-seen-col { width: 12%; }
+.interviews-col { width: 7%; }
+.hires-col { width: 6%; }
+.invites-col { width: 6%; }
+.last-seen-col { width: 11%; }
 .posted-col { width: 8%; }
-.interest-col { width: 10%; }
-.status-col { width: 10%; }
+.interest-col { width: 9%; }
+.status-col { width: 11%; }
 .actions-col { width: 46px; }
 .job-cell { padding-left: 18px !important; }
 .job-title { display: block; max-width: 100%; overflow: hidden; padding: 0; border: 0; color: #3a4334; background: transparent; text-align: left; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; font-weight: 700; letter-spacing: -.015em; cursor: pointer; }
@@ -256,7 +257,7 @@
   .filter-select, .sort-select { flex: 1; justify-content: space-between; }
   .filter-select select, .sort-select select { width: auto; flex: 1; }
   .data-button { min-width: 67px; }
-  .jobs-table { min-width: 1120px; }
+  .jobs-table { min-width: 1240px; }
   .jobs-table th, .jobs-table td { padding-right: 9px; padding-left: 9px; }
   .job-col { width: 34%; }
   .table-empty { position: sticky; left: 0; width: calc(100vw - 30px) !important; }

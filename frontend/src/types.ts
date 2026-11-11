@@ -21,6 +21,7 @@ export interface Job {
   currency: string
   proposals_count: number | null
   interviewing_count: number | null
+  hires_count: number | null
   posted_at: string | null
   posted_label: string | null
   interest: number | null

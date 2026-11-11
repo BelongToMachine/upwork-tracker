@@ -46,6 +46,7 @@ class JobInput(BaseModel):
     currency: str = Field(default="USD", min_length=3, max_length=3, pattern=r"^[A-Z]{3}$")
     proposals_count: int | None = Field(default=None, ge=0)
     interviewing_count: int | None = Field(default=None, ge=0)
+    hires_count: int | None = Field(default=None, ge=0)
     posted_at: str | None = None
     posted_label: str | None = None
     interest: int | None = Field(default=None, ge=1, le=5)
@@ -133,6 +134,7 @@ def initialize_db() -> None:
                 currency TEXT NOT NULL DEFAULT 'USD',
                 proposals_count INTEGER,
                 interviewing_count INTEGER,
+                hires_count INTEGER,
                 posted_at TEXT,
                 posted_label TEXT,
                 interest INTEGER CHECK (interest IS NULL OR interest BETWEEN 1 AND 5),
@@ -153,6 +155,7 @@ def initialize_db() -> None:
             "last_updated_by": "TEXT NOT NULL DEFAULT ''",
             "last_seen_by_employer": "TEXT",
             "invites_sent": "INTEGER",
+            "hires_count": "INTEGER",
             "remarks": "TEXT NOT NULL DEFAULT ''",
         }
         for column, definition in new_columns.items():
@@ -174,12 +177,12 @@ def insert_job(db: sqlite3.Connection, job: JobInput, job_id: str | None = None)
         """
         INSERT INTO jobs (
             id, title, description, payment_type, pay_min, pay_max, currency,
-            proposals_count, interviewing_count, posted_at, posted_label, interest,
+            proposals_count, interviewing_count, hires_count, posted_at, posted_label, interest,
             application_status, source_url, notes, last_updated_by,
             last_seen_by_employer, invites_sent, remarks, created_at, updated_at
         ) VALUES (
             :id, :title, :description, :payment_type, :pay_min, :pay_max, :currency,
-            :proposals_count, :interviewing_count, :posted_at, :posted_label, :interest,
+            :proposals_count, :interviewing_count, :hires_count, :posted_at, :posted_label, :interest,
             :application_status, :source_url, :notes, :last_updated_by,
             :last_seen_by_employer, :invites_sent, :remarks, :created_at, :updated_at
         )
@@ -223,13 +226,13 @@ def create_job(job: JobInput) -> dict[str, object]:
 def update_job(job_id: str, job: JobInput) -> dict[str, object]:
     with connect_db() as db:
         existing = db.execute(
-            "SELECT created_at, last_updated_by, last_seen_by_employer, invites_sent, remarks FROM jobs WHERE id = ?",
+            "SELECT created_at, last_updated_by, last_seen_by_employer, invites_sent, hires_count, remarks FROM jobs WHERE id = ?",
             (job_id,),
         ).fetchone()
         if existing is None:
             raise HTTPException(status_code=404, detail="Job not found")
         record = job.model_dump()
-        for field in ("last_updated_by", "last_seen_by_employer", "invites_sent", "remarks"):
+        for field in ("last_updated_by", "last_seen_by_employer", "invites_sent", "hires_count", "remarks"):
             if field not in job.model_fields_set:
                 record[field] = existing[field]
         record.update({"id": job_id, "created_at": existing["created_at"], "updated_at": now_iso()})
@@ -239,6 +242,7 @@ def update_job(job_id: str, job: JobInput) -> dict[str, object]:
                 title=:title, description=:description, payment_type=:payment_type,
                 pay_min=:pay_min, pay_max=:pay_max, currency=:currency,
                 proposals_count=:proposals_count, interviewing_count=:interviewing_count,
+                hires_count=:hires_count,
                 posted_at=:posted_at, posted_label=:posted_label, interest=:interest,
                 application_status=:application_status, source_url=:source_url,
                 notes=:notes, last_updated_by=:last_updated_by,
@@ -284,7 +288,7 @@ async def import_csv(request: Request) -> ImportResult:
                     row[field] = None
                 else:
                     row[field] = float(value)
-            for field in ("proposals_count", "interviewing_count", "invites_sent", "interest"):
+            for field in ("proposals_count", "interviewing_count", "hires_count", "invites_sent", "interest"):
                 value = (row.get(field) or "").strip()
                 if value == "":
                     row[field] = None
