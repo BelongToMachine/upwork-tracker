@@ -1,6 +1,6 @@
 # Upwork Desk
 
-A private, table-first tracker for Upwork opportunities. Keep job details, budgets, proposal, interview, hire, and invite counts, employer views, your interest rating, application status, editor, and personal remarks in one place. Relative employer-view labels can be entered as dates such as `2026-11-08`, “yesterday,” “last day,” or “N days ago”; relative dates use the date you save the update. Records are stored in SQLite.
+A private, table-first tracker for Upwork opportunities. Keep job details, budgets, proposal, interview, hire, and invite counts, employer views, your interest rating, application status, editor, and personal remarks in one place. Posted values are stored as timezone-aware timestamps, and the interface computes relative labels such as “2 days ago” from the current time. Relative employer-view labels can be entered as dates such as `2026-11-08`, “yesterday,” “last day,” or “N days ago”; relative dates use the date you save the update. Records are stored in SQLite.
 
 ## Run locally
 

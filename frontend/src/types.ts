@@ -23,7 +23,6 @@ export interface Job {
   interviewing_count: number | null
   hires_count: number | null
   posted_at: string | null
-  posted_label: string | null
   interest: number | null
   application_status: ApplicationStatus
   source_url: string | null

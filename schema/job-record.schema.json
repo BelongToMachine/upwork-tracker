@@ -17,7 +17,6 @@
     "interviewing_count",
     "hires_count",
     "posted_at",
-    "posted_label",
     "interest",
     "application_status",
     "source_url",
@@ -40,8 +39,11 @@
     "proposals_count": { "type": ["integer", "null"], "minimum": 0 },
     "interviewing_count": { "type": ["integer", "null"], "minimum": 0 },
     "hires_count": { "type": ["integer", "null"], "minimum": 0 },
-    "posted_at": { "type": ["string", "null"], "format": "date-time" },
-    "posted_label": { "type": ["string", "null"] },
+    "posted_at": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "Timezone-aware ISO 8601 timestamp. The interface computes the relative label from this value."
+    },
     "interest": { "type": ["integer", "null"], "minimum": 1, "maximum": 5 },
     "application_status": {
       "type": "string",

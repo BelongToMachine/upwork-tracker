@@ -42,7 +42,6 @@ const blankJob: JobInput = {
   last_seen_by_employer: null,
   invites_sent: null,
   posted_at: null,
-  posted_label: null,
   interest: null,
   application_status: 'saved',
   source_url: null,
@@ -80,12 +79,11 @@ function formatPay(job: Pick<JobInput, 'payment_type' | 'pay_min' | 'pay_max' | 
   return `${range}${job.payment_type === 'hourly' ? ' / hr' : ''}`
 }
 
-function formatPosted(job: Job) {
-  if (job.posted_label) return job.posted_label
+function formatPosted(job: Job, now: number) {
   if (!job.posted_at) return '—'
   const date = new Date(job.posted_at)
   if (Number.isNaN(date.valueOf())) return job.posted_at
-  const diffSeconds = Math.round((date.valueOf() - Date.now()) / 1000)
+  const diffSeconds = Math.round((date.valueOf() - now) / 1000)
   const units: Array<[Intl.RelativeTimeFormatUnit, number]> = [
     ['year', 60 * 60 * 24 * 365],
     ['month', 60 * 60 * 24 * 30],
@@ -135,6 +133,7 @@ function normalizeLastSeenByEmployer(value: string | null) {
 
 function App() {
   const [jobs, setJobs] = useState<Job[]>([])
+  const [clockNow, setClockNow] = useState(() => Date.now())
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
   const [query, setQuery] = useState('')
@@ -165,6 +164,11 @@ function App() {
   useEffect(() => {
     void refreshJobs()
   }, [refreshJobs])
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setClockNow(Date.now()), 60_000)
+    return () => window.clearInterval(timer)
+  }, [])
 
   useEffect(() => {
     if (!notice) return
@@ -459,7 +463,7 @@ function App() {
                       <td className="metric-cell"><span className="metric-number">{job.hires_count ?? '—'}</span><span className="metric-label">hires</span></td>
                       <td className="metric-cell"><span className="metric-number">{job.invites_sent ?? '—'}</span><span className="metric-label">invites sent</span></td>
                       <td className="last-seen-cell">{job.last_seen_by_employer ?? '—'}</td>
-                      <td className="posted-cell"><Clock3 size={14} /><span>{formatPosted(job)}</span></td>
+                      <td className="posted-cell"><Clock3 size={14} /><span>{formatPosted(job, clockNow)}</span></td>
                       <td className="rating-cell">
                         <div className="rating-buttons" role="group" aria-label={`${job.title} interest rating`}>
                           {[1, 2, 3, 4, 5].map((rating) => <button key={rating} className={`rating-star ${rating <= (job.interest ?? 0) ? 'selected' : ''}`} aria-label={`Set interest to ${rating} out of 5`} title={`${rating} / 5`} onClick={() => void quickUpdate(job, { interest: job.interest === rating ? null : rating })}><Star size={14} fill={rating <= (job.interest ?? 0) ? 'currentColor' : 'none'} /></button>)}
@@ -553,7 +557,7 @@ function JobForm({ initial, mode, busy, onCancel, onSubmit }: JobFormProps) {
       return
     }
     const postedAt = form.posted_at ? new Date(form.posted_at).toISOString() : null
-    await onSubmit({ ...form, last_seen_by_employer: lastSeenByEmployer, posted_at: postedAt, posted_label: null, currency: form.currency.trim().toUpperCase() || 'USD' })
+    await onSubmit({ ...form, last_seen_by_employer: lastSeenByEmployer, posted_at: postedAt, currency: form.currency.trim().toUpperCase() || 'USD' })
   }
 
   const datetimeLocal = form.posted_at ? toLocalDateTimeInput(form.posted_at) : ''

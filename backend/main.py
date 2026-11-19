@@ -14,7 +14,7 @@ from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
@@ -38,6 +38,8 @@ PaymentType = Literal["hourly", "fixed"]
 
 
 class JobInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     title: str = Field(min_length=1, max_length=240)
     description: str = ""
     payment_type: PaymentType = "fixed"
@@ -47,8 +49,7 @@ class JobInput(BaseModel):
     proposals_count: int | None = Field(default=None, ge=0)
     interviewing_count: int | None = Field(default=None, ge=0)
     hires_count: int | None = Field(default=None, ge=0)
-    posted_at: str | None = None
-    posted_label: str | None = None
+    posted_at: datetime | None = None
     interest: int | None = Field(default=None, ge=1, le=5)
     application_status: ApplicationStatus = "saved"
     source_url: str | None = None
@@ -63,11 +64,18 @@ class JobInput(BaseModel):
     def normalize_currency(cls, value: object) -> object:
         return value.strip().upper() if isinstance(value, str) else value
 
-    @field_validator("posted_at", "posted_label", "source_url", mode="before")
+    @field_validator("posted_at", "source_url", mode="before")
     @classmethod
     def normalize_optional_text(cls, value: object) -> object:
         if isinstance(value, str):
             return value.strip() or None
+        return value
+
+    @field_validator("posted_at")
+    @classmethod
+    def require_posted_at_timezone(cls, value: datetime | None) -> datetime | None:
+        if value is not None and value.utcoffset() is None:
+            raise ValueError("posted_at must include a timezone, for example 2026-11-10T09:30:00Z")
         return value
 
     @field_validator("last_updated_by", mode="before")
@@ -103,6 +111,12 @@ class JobRecord(JobInput):
     updated_at: str
 
 
+class ImportJobInput(JobInput):
+    id: str | None = None
+    created_at: str | None = None
+    updated_at: str | None = None
+
+
 class ImportResult(BaseModel):
     imported: int
 
@@ -136,7 +150,6 @@ def initialize_db() -> None:
                 interviewing_count INTEGER,
                 hires_count INTEGER,
                 posted_at TEXT,
-                posted_label TEXT,
                 interest INTEGER CHECK (interest IS NULL OR interest BETWEEN 1 AND 5),
                 application_status TEXT NOT NULL DEFAULT 'saved',
                 source_url TEXT,
@@ -166,23 +179,23 @@ def initialize_db() -> None:
 
 
 def row_to_job(row: sqlite3.Row) -> dict[str, object]:
-    return dict(row)
+    return {field: row[field] for field in JobRecord.model_fields if field in row.keys()}
 
 
 def insert_job(db: sqlite3.Connection, job: JobInput, job_id: str | None = None) -> dict[str, object]:
     created_at = now_iso()
-    record = job.model_dump()
+    record = job.model_dump(mode="json")
     record.update({"id": job_id or str(uuid.uuid4()), "created_at": created_at, "updated_at": created_at})
     db.execute(
         """
         INSERT INTO jobs (
             id, title, description, payment_type, pay_min, pay_max, currency,
-            proposals_count, interviewing_count, hires_count, posted_at, posted_label, interest,
+            proposals_count, interviewing_count, hires_count, posted_at, interest,
             application_status, source_url, notes, last_updated_by,
             last_seen_by_employer, invites_sent, remarks, created_at, updated_at
         ) VALUES (
             :id, :title, :description, :payment_type, :pay_min, :pay_max, :currency,
-            :proposals_count, :interviewing_count, :hires_count, :posted_at, :posted_label, :interest,
+            :proposals_count, :interviewing_count, :hires_count, :posted_at, :interest,
             :application_status, :source_url, :notes, :last_updated_by,
             :last_seen_by_employer, :invites_sent, :remarks, :created_at, :updated_at
         )
@@ -231,7 +244,7 @@ def update_job(job_id: str, job: JobInput) -> dict[str, object]:
         ).fetchone()
         if existing is None:
             raise HTTPException(status_code=404, detail="Job not found")
-        record = job.model_dump()
+        record = job.model_dump(mode="json")
         for field in ("last_updated_by", "last_seen_by_employer", "invites_sent", "hires_count", "remarks"):
             if field not in job.model_fields_set:
                 record[field] = existing[field]
@@ -243,7 +256,7 @@ def update_job(job_id: str, job: JobInput) -> dict[str, object]:
                 pay_min=:pay_min, pay_max=:pay_max, currency=:currency,
                 proposals_count=:proposals_count, interviewing_count=:interviewing_count,
                 hires_count=:hires_count,
-                posted_at=:posted_at, posted_label=:posted_label, interest=:interest,
+                posted_at=:posted_at, interest=:interest,
                 application_status=:application_status, source_url=:source_url,
                 notes=:notes, last_updated_by=:last_updated_by,
                 last_seen_by_employer=:last_seen_by_employer, invites_sent=:invites_sent,
@@ -265,10 +278,11 @@ def delete_job(job_id: str) -> Response:
 
 
 @app.post("/api/import/json", response_model=ImportResult)
-def import_json(jobs: list[JobInput]) -> ImportResult:
+def import_json(jobs: list[ImportJobInput]) -> ImportResult:
     with connect_db() as db:
         for job in jobs:
-            insert_job(db, job)
+            record = job.model_dump(exclude={"id", "created_at", "updated_at"})
+            insert_job(db, JobInput.model_validate(record))
     return ImportResult(imported=len(jobs))
 
 
@@ -279,7 +293,7 @@ async def import_csv(request: Request) -> ImportResult:
     if not reader.fieldnames or "title" not in reader.fieldnames:
         raise HTTPException(status_code=400, detail="CSV must include a title column")
 
-    jobs: list[JobInput] = []
+    jobs: list[ImportJobInput] = []
     for line_number, row in enumerate(reader, start=2):
         try:
             for field in ("pay_min", "pay_max"):
@@ -294,15 +308,16 @@ async def import_csv(request: Request) -> ImportResult:
                     row[field] = None
                 else:
                     row[field] = int(value)
-            for field in ("posted_at", "posted_label", "source_url"):
+            for field in ("posted_at", "source_url"):
                 row[field] = (row.get(field) or "").strip() or None
-            jobs.append(JobInput.model_validate(row))
+            jobs.append(ImportJobInput.model_validate(row))
         except Exception as error:
             raise HTTPException(status_code=400, detail=f"Invalid CSV row {line_number}: {error}") from error
 
     with connect_db() as db:
         for job in jobs:
-            insert_job(db, job)
+            record = job.model_dump(exclude={"id", "created_at", "updated_at"})
+            insert_job(db, JobInput.model_validate(record))
     return ImportResult(imported=len(jobs))
 
 
